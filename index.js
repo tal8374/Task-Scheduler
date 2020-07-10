@@ -8,13 +8,10 @@ var app = express();
 const mongoose = require('mongoose');
 const config = require('./config');
 
-const formRouter = require('./routes/form.route');
-const userRouter = require('./routes/user.route');
-
-const userService = require('./services/user.service');
-
 var http = require('http');
 var server = http.Server(app);
+
+const TaskScheduler = require('./taskScheduler/taskScheduler');
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -47,9 +44,14 @@ server.listen(PORT, function () {
   console.log('server is running');
 });
 
-mongoose.connect(config.mongo_url, {}, function (err) {
+mongoose.connect(config.mongo_url, {}, async function (err) {
   if (err) console.log(err);
-});
 
-// app.use('/form', formRouter);
+  console.log('start taskScheduler');
+  let taskScheduler = new TaskScheduler();
+
+  console.log('start define');
+  await taskScheduler.define('taskName1', () => { console.log(`Running taskName1`) });
+  taskScheduler.start();
+});
 

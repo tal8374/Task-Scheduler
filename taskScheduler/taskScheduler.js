@@ -1,8 +1,10 @@
+const humanInterval = require('human-interval');
+
 const JobModel = require('../models/job.model');
 
 const Job = require('./job');
 
-const humanInterval = require('human-interval')
+const { getNextTime } = require('../utils/functions');
 
 
 const defaultOptions = {
@@ -20,7 +22,7 @@ const defaultOptions = {
     lockLimit: 0,
 }
 
-export class TaskScheduler {
+module.exports = class TaskScheduler {
 
     constructor(options = defaultOptions) {
         this.options = { ...defaultOptions, ...options };
@@ -29,51 +31,50 @@ export class TaskScheduler {
         this.jobs = []; // {name, functionJob}
     }
 
-    //const job = agenda.create('printAnalyticsReport', {userCount: 100});
-    //Returns an instance of a jobName with data.
-    create(taskeName, options) {
-        return new Job(taskeName, options);
-    }
-
     // agenda.define('reset password', async job => {
     //     // Etc
     //   });
     //Defining the task and passing the function.
-    define(taskName, job) {
-        this.jobs.push({ taskName, job });
-    }
+    async define(taskName, options, func) {
+        if (!func) {
+            func = options
+            options = {};
+        }
 
-    //Takes a number which specifies the max number jobs that can be locked at any given moment. By default it is 0 for no max. 
-    //agenda.lockLimit(0);
-    lockLimit(lockLimitSize) {
-
+        let newJob = new Job(taskName, options, func);
+        newJob = await newJob.save();
+        this.jobs.push(newJob);
     }
 
     //await agenda.start();
     //Starting the task scheduler. Running a process every time.
-    start() {
-        let interval = humanInterval(this.options.processEvery);
-        setInterval(() => {
-            let jobs = await this.getJobs();
-            lockedJobs.array.forEach(job => {
+    async start() {
+        await this.runStartTasker();
+        setInterval(async () => {
+            await this.runStartTasker();
+        }, getNextTime(this.options.processEvery) - Date.now());
+    }
 
-            });
-        }, interval);
+    async runStartTasker() {
+        let jobs = await this.getJobs();
+        jobs.forEach(currentJob => {
+            this.jobs.find(job => job._id.toString() == currentJob._id.toString()).func();
+        });
     }
 
     async getJobs() {
-        let lockedJobs = [];
         let lockDate = new Date();
-        await JobModel.findAndModify({
-            query: {
-                _id: { $in: [this.jobs.map(job => job._id)] },
+        await JobModel.updateMany(
+            {
+                _id: { $in: this.jobs.map(job => job._id) },
                 $or: [
                     { isLocked: false },
                     { lockDate: { $gte: new Date(Date.now() - humanInterval(this.options.unLockDefault)) } }
                 ]
             },
-            update: { "$set": { isLocked: true, lockDate: lockDate } }
-        });
+            { "$set": { isLocked: true, lockDate: lockDate } },
+            { returnNewDocument: true },
+        );
 
         return await JobModel.find({
             _id: { $in: [this.jobs.map(job => job._id)] },

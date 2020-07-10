@@ -1,11 +1,14 @@
+var md5 = require('md5');
+
 const JobModel = require('../models/job.model');
 const { getNextTime } = require('../utils/functions');
 
-export class Job {
+module.exports = class Job {
 
-    constructor(taskName, options) {
+    constructor(taskName, options, func) {
         this.taskName = taskName;
         this.options = options;
+        this.func = func;
     }
 
     //support:
@@ -42,7 +45,7 @@ export class Job {
     //Sets job.attrs.failedAt to now, and sets job.attrs.failReason to reason
     //job.fail('insufficient disk space');
     //job.fail(new Error('insufficient disk space'));
-    fail(reason) {
+    async fail(reason) {
         if (!this._id)
             return;
 
@@ -51,7 +54,7 @@ export class Job {
 
     //await job.remove();
     //Removes the job from the database.
-    remove() {
+    async remove() {
         if (!this._id)
             return;
 
@@ -59,7 +62,7 @@ export class Job {
     }
 
     //Disables the job. Upcoming runs won't execute.
-    disable() {
+    async disable() {
         if (!this._id)
             return;
 
@@ -75,9 +78,13 @@ export class Job {
     }
 
     async save() {
-        JobModel.update({ taskName: this.taskName, options: this.options }, { taskName: this.taskName, options: this.options });
-        let result = JobModel.findOne({ taskName: this.taskName, options: this.options }, { _id: 1 });
+        let result = await JobModel.findOne({ name: this.taskName, optionsMD5: md5(JSON.stringify(this.options)) });
+        if (!result) {
+            let newJob = new JobModel({ name: this.taskName, optionsMD5: md5(JSON.stringify(this.options)) });
+            result = await newJob.save();
+        }
         this._id = result._id;
+        return this;
     }
 
 }

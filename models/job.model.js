@@ -15,6 +15,7 @@ let jobSchema = new mongoose.Schema({
     nextTime: { type: Schema.Types.Date },
     nextTimeExpression: { type: Schema.Types.String },
     isOneTime: { type: Schema.Types.Boolean },
+    optionsMD5: { type: Schema.Types.String },
 });
 
 module.exports = mongoose.model('Job', jobSchema);

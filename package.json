@@ -16,6 +16,7 @@
     "human-interval": "^1.0.0",
     "jsdom": "^14.0.0",
     "jsonwebtoken": "^8.5.1",
+    "md5": "^2.2.1",
     "memored": "^1.1.1",
     "mongoose": "^5.4.16",
     "morgan": "~1.9.0",
