@@ -1,8 +1,38 @@
+const JobModel = require('../models/job.model');
+
+const Job = require('./job');
+
+const humanInterval = require('human-interval')
+
+
+const defaultOptions = {
+    //Takes a string interval which can be either a traditional javascript number, or a string such as 3 minutes
+    processEvery: '5 seconds',
+    //Default time to unlock the job, all jobs should be done before that time.
+    unLockDefault: '5 minutes',
+    //Takes a number which specifies the max number of jobs that can be running at any given moment. By default it is 20.
+    maxConcurrency: 20,
+    //number maximum number of that job that can be running at once (per instance of agenda)
+    concurrency: 1,
+    //Number of multiple jobs every time when getting jobs
+    multipleJobs: 3,
+    // Takes a number which specifies the max number jobs that can be locked at any given moment. By default it is 0 for no max.
+    lockLimit: 0,
+}
+
 export class TaskScheduler {
 
-    constructor() {
-        this.lockedJobs = []
-        this.runningJobs = []
+    constructor(options = defaultOptions) {
+        this.options = { ...defaultOptions, ...options };
+        this.lockedJobs = [];
+        this.runningJobs = [];
+        this.jobs = []; // {name, functionJob}
+    }
+
+    //const job = agenda.create('printAnalyticsReport', {userCount: 100});
+    //Returns an instance of a jobName with data.
+    create(taskeName, options) {
+        return new Job(taskeName, options);
     }
 
     // agenda.define('reset password', async job => {
@@ -10,7 +40,7 @@ export class TaskScheduler {
     //   });
     //Defining the task and passing the function.
     define(taskName, job) {
-
+        this.jobs.push({ taskName, job });
     }
 
     //Takes a number which specifies the max number jobs that can be locked at any given moment. By default it is 0 for no max. 
@@ -22,7 +52,34 @@ export class TaskScheduler {
     //await agenda.start();
     //Starting the task scheduler. Running a process every time.
     start() {
-        
+        let interval = humanInterval(this.options.processEvery);
+        setInterval(() => {
+            let jobs = await this.getJobs();
+            lockedJobs.array.forEach(job => {
+
+            });
+        }, interval);
+    }
+
+    async getJobs() {
+        let lockedJobs = [];
+        let lockDate = new Date();
+        await JobModel.findAndModify({
+            query: {
+                _id: { $in: [this.jobs.map(job => job._id)] },
+                $or: [
+                    { isLocked: false },
+                    { lockDate: { $gte: new Date(Date.now() - humanInterval(this.options.unLockDefault)) } }
+                ]
+            },
+            update: { "$set": { isLocked: true, lockDate: lockDate } }
+        });
+
+        return await JobModel.find({
+            _id: { $in: [this.jobs.map(job => job._id)] },
+            isLocked: true,
+            lockDate: lockDate
+        })
     }
 
     //await agenda.every('3 minutes', 'delete old users');
