@@ -14,7 +14,7 @@
     "fs": "0.0.1-security",
     "http-errors": "~1.6.2",
     "human-interval": "^1.0.0",
-    "jsdom": "^14.0.0",
+    "jsdom": "^16.5.0",
     "jsonwebtoken": "^8.5.1",
     "md5": "^2.2.1",
     "memored": "^1.1.1",
